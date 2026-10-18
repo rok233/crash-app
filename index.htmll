@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>SLOT HOUSE - Grand Line Admin</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --card-bg: #131823;
+            --text-color: #e6edf3;
+            --text-muted: #8b949e;
+            --accent: #2ecc71;
+            --danger: #e74c3c;
+            --border: #21262d;
+            --yellow: #f1c40f;
+            --blue: #3498db;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); height: 100vh; display: flex; flex-direction: column; overflow: hidden; font-size: 14px; }
+
+        header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background-color: var(--card-bg); border-bottom: 1px solid var(--border); }
+        .logo-text { font-weight: 900; font-size: 16px; color: #fff; }
+        .stars-balance { background: rgba(241, 196, 15, 0.15); color: var(--yellow); padding: 6px 14px; border-radius: 20px; font-weight: bold; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+
+        .main-content { display: none; flex: 1; flex-direction: column; overflow-y: auto; padding-bottom: 20px; }
+        .main-content.active { display: flex; }
+
+        .lobby-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 16px; }
+        .game-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: 18px 12px; text-align: center; cursor: pointer; transition: transform 0.1s; }
+        .game-card:active { transform: scale(0.96); border-color: var(--blue); }
+        .game-icon { font-size: 36px; margin-bottom: 8px; }
+        .game-title { font-weight: bold; font-size: 14px; color: #fff; }
+        .game-desc { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+        .back-lobby { background: none; border: none; color: var(--blue); font-size: 14px; padding: 10px 16px; cursor: pointer; text-align: left; font-weight: bold; }
+
+        .game-container { padding: 16px; display: flex; flex-direction: column; gap: 15px; align-items: center; }
+        .table-box { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: 20px; width: 100%; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+        .input-field { width: 100%; background: #21262d; border: 1px solid var(--border); border-radius: 10px; padding: 12px; color: #fff; font-size: 15px; outline: none; margin-top: 8px; margin-bottom: 12px; text-align: center; }
+        
+        .btn-action { width: 100%; padding: 14px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 15px; }
+        .btn-green { background: var(--accent); color: #000; }
+        .btn-blue { background: var(--blue); color: #fff; }
+        .btn-red { background: var(--danger); color: #fff; }
+
+        /* Игры */
+        .crash-screen { flex: 1; display: flex; flex-direction: column; height: 100%; position: relative; }
+        .history { display: flex; gap: 8px; padding: 10px 16px; overflow-x: auto; background: rgba(0,0,0,0.3); border-bottom: 1px solid var(--border); }
+        .hist-item { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .hist-green { background: rgba(46, 204, 113, 0.15); color: #2ecc71; }
+        .hist-red { background: rgba(231, 76, 60, 0.15); color: #e74c3c; }
+        .game-area { flex: 1; position: relative; background: radial-gradient(circle at center, #1a2332 0%, #0b0e14 75%); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .multiplier { font-size: 56px; font-weight: 900; color: #fff; text-shadow: 0 0 20px rgba(52,152,219,0.5); }
+        .multiplier.crashed { color: var(--danger); }
+        .bet-panel { background-color: var(--card-bg); border-top: 1px solid var(--border); padding: 16px; }
+
+        /* Админские вкладки и списки заявок */
+        .admin-section { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; text-align: left; }
+        .request-item { background: #1a2130; border: 1px solid var(--border); padding: 10px; border-radius: 8px; margin-top: 8px; font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
+        .stat-card { background: #1a2130; padding: 10px; border-radius: 8px; text-align: center; }
+
+        #adminModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; justify-content: center; align-items: center; }
+        .modal-box { background: var(--card-bg); border: 1px solid var(--border); padding: 24px; border-radius: 16px; width: 85%; max-width: 320px; text-align: center; }
+
+        nav { display: flex; background-color: var(--card-bg); border-top: 1px solid var(--border); }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; color: var(--text-muted); background: none; border: none; cursor: pointer; gap: 4px; }
+        .nav-item.active { color: var(--accent); }
+        .nav-icon { font-size: 18px; }
+        .nav-label { font-size: 10px; font-weight: 500; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo-text">🇺🇿 SLOT HOUSE UZ</div>
+        <div class="stars-balance" onclick="switchTab('profile')">⭐ <span id="balance">15</span></div>
+    </header>
+
+    <!-- ЛОББИ -->
+    <div id="tab-lobby" class="main-content active">
+        <div class="lobby-grid">
+            <div class="game-card" onclick="switchTab('game-crash')">
+                <div class="game-icon">🚀</div>
+                <div class="game-title">Краш Ракета</div>
+                <div class="game-desc">Взлетай и забирай</div>
+            </div>
+            <div class="game-card" onclick="switchTab('game-bj')">
+                <div class="game-icon">🃏</div>
+                <div class="game-title">Блэкджек</div>
+                <div class="game-desc">Собери 21 очко</div>
+            </div>
+            <div class="game-card" onclick="switchTab('game-roulette')">
+                <div class="game-icon">🎯</div>
+                <div class="game-title">Рулетка</div>
+                <div class="game-desc">Красное / Черное</div>
+            </div>
+            <div class="game-card" onclick="switchTab('game-gun')">
+                <div class="game-icon">🔫</div>
+                <div class="game-title">Русская рулетка</div>
+                <div class="game-desc">Испытай удачу</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- КРАШ -->
+    <div id="tab-game-crash" class="main-content">
+        <button class="back-lobby" onclick="switchTab('lobby')">← Назад в лобби</button>
+        <div class="crash-screen">
+            <div class="history" id="historyList"></div>
+            <div class="game-area">
+                <div class="multiplier" id="multText">1.00x</div>
+            </div>
+            <div class="bet-panel">
+                <div style="font-size:22px; font-weight:bold; text-align:center; margin-bottom:8px;">⭐ <span id="crashBetDisp">10</span></div>
+                <button id="crashActionBtn" class="btn-action btn-green" onclick="handleCrashAction()">Сделать ставку</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- БЛЭКДЖЕК -->
+    <div id="tab-game-bj" class="main-content">
+        <button class="back-lobby" onclick="switchTab('lobby')">← Назад в лобби</button>
+        <div class="game-container">
+            <h2>🃏 Блэкджек (21)</h2>
+            <div class="table-box">
+                <p style="color:var(--text-muted);">Дилер: <span id="dealerCards">-</span></p>
+                <h1 style="margin: 20px 0; color:var(--yellow);" id="bjStatus">Сделайте ставку</h1>
+                <p style="color:var(--text-muted);">Ваши карты: <span id="playerCards">-</span></p>
+            </div>
+            <input type="number" id="bjBet" class="input-field" value="10">
+            <button class="btn-action btn-green" id="bjStartBtn" onclick="startBJ()">Раздать карты</button>
+            <div style="display:flex; gap:10px; width:100%;" id="bjActions">
+                <button class="btn-action btn-blue" onclick="bjHit()">Ещё</button>
+                <button class="btn-action btn-red" onclick="bjStand()">Хватит</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- РУЛЕТКА -->
+    <div id="tab-game-roulette" class="main-content">
+        <button class="back-lobby" onclick="switchTab('lobby')">← Назад в лобби</button>
+        <div class="game-container">
+            <h2>🎯 Рулетка</h2>
+            <div class="table-box">
+                <h1 id="rouletteResult" style="font-size:40px; margin: 20px 0;">🎰</h1>
+                <p id="rouletteStatus" style="color:var(--text-muted);">Выберите цвет</p>
+            </div>
+            <input type="number" id="rouletteBet" class="input-field" value="10">
+            <div style="display:flex; gap:10px; width:100%;">
+                <button class="btn-action" style="background:#e74c3c; color:#fff;" onclick="playRoulette('red')">Красное (x2)</button>
+                <button class="btn-action" style="background:#34495e; color:#fff;" onclick="playRoulette('black')">Черное (x2)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- РУССКАЯ РУЛЕТКА -->
+    <div id="tab-game-gun" class="main-content">
+        <button class="back-lobby" onclick="switchTab('lobby')">← Назад в лобби</button>
+        <div class="game-container">
+            <h2>🔫 Русская рулетка</h2>
+            <div class="table-box">
+                <p style="color:var(--text-muted);">Шанс проиграть: 1 из 6</p>
+                <h1 id="gunStatus" style="font-size:32px; margin: 20px 0;">Барабан заряжен</h1>
+            </div>
+            <input type="number" id="gunBet" class="input-field" value="15">
+            <button class="btn-action btn-red" onclick="playRussianRoulette()">Сделать ход (x2)</button>
+        </div>
+    </div>
+
+    <!-- ПРОФИЛЬ -->
+    <div id="tab-profile" class="main-content" style="padding:16px; gap:12px;">
+        <h2 style="color:#fff;">Кабинет игрока</h2>
+        <div class="table-box">
+            <p style="color:var(--text-muted); font-size:12px;">Ваш баланс:</p>
+            <h1 style="color:var(--yellow); margin-top:4px;">⭐ <span id="profileBalance">15</span></h1>
+        </div>
+
+        <div class="table-box">
+            <h3 style="color:#fff; font-size:14px; margin-bottom:5px;">⭐ Пополнить Stars (Мин. 20)</h3>
+            <input type="number" id="depositStarsInput" class="input-field" value="20">
+            <button class="btn-action btn-green" onclick="requestDepositStars()">Оплатить Stars через бота</button>
+        </div>
+
+        <div class="table-box">
+            <h3 style="color:#fff; font-size:14px; margin-bottom:5px;">🇺🇿 Пополнить сумы / Uzcard / Humo (Мин. 15,000 сум)</h3>
+            <p style="color:var(--text-muted); font-size:12px; margin-bottom: 8px;">Карта: <b>9860 0000 1234 5678</b></p>
+            <input type="number" id="depositUzsInput" class="input-field" value="15000">
+            <button class="btn-action btn-blue" onclick="requestUzsDeposit()">Я перевел сумы (Уведомить админа)</button>
+        </div>
+
+        <div class="table-box">
+            <h3 style="color:#fff; font-size:14px; margin-bottom:5px;">💸 Вывод средств</h3>
+            <p style="color:var(--text-muted); font-size:11px; margin-bottom: 6px;">Мин. вывод: 100 Stars или 100,000 сум</p>
+            <input type="text" id="withdrawDest" class="input-field" placeholder="Номер карты UZCARD / HUMO или @username">
+            <input type="number" id="withdrawInput" class="input-field" value="100000">
+            <button class="btn-action btn-red" onclick="requestWithdraw()">Запросить вывод</button>
+        </div>
+
+        <div class="table-box">
+            <h3 style="color:#fff; font-size:14px; margin-bottom:5px;">⚙️ Панель администратора</h3>
+            <button class="btn-action" style="background:#e67e22; color:#fff;" onclick="openAdminModal()">Войти в админку</button>
+        </div>
+    </div>
+
+    <!-- ОКНО ВХОДА В АДМИНКУ -->
+    <div id="adminModal">
+        <div class="modal-box">
+            <h3 style="color:#fff; margin-bottom:12px;">🔐 Вход в админку</h3>
+            <input type="password" id="adminPassInput" class="input-field" placeholder="Пароль">
+            <div style="display:flex; gap:8px;">
+                <button class="btn-action btn-green" onclick="checkAdminPass()">Войти</button>
+                <button class="btn-action btn-red" onclick="closeAdminModal()">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ПРОДВИНУТАЯ АДМИН-ПАНЕЛЬ -->
+    <div id="tab-admin" class="main-content" style="padding:16px; gap:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 style="color:#fff;">🔐 Админ-панель</h2>
+            <button onclick="switchTab('lobby')" style="background:none; border:none; color:var(--blue); font-weight:bold; cursor:pointer;">Закрыть</button>
+        </div>
+
+        <!-- Статистика -->
+        <div class="admin-section">
+            <h3 style="color:#fff; font-size:14px; margin-bottom:8px;">📊 Статистика казино</h3>
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <p style="font-size:10px; color:var(--text-muted);">Игроков в сети</p>
+                    <h3 style="color:var(--yellow);" id="statPlayers">1</h3>
+                </div>
+                <div class="stat-card">
+                    <p style="font-size:10px; color:var(--text-muted);">Всего заявок</p>
+                    <h3 style="color:var(--accent);" id="statRequests">0</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Выдача баланса конкретному юзеру -->
+        <div class="admin-section">
+            <h3 style="color:#fff; font-size:14px; margin-bottom:8px;">👤 Выдать баланс игроку</h3>
+            <input type="text" id="targetUser" class="input-field" placeholder="Telegram ID или @username" style="margin-bottom:6px;">
+            <input type="number" id="targetAmount" class="input-field" placeholder="Сумма (⭐ / сум)" style="margin-bottom:6px;">
+            <button class="btn-action btn-green" onclick="adminGiveBalance()">Начислить игроку</button>
+        </div>
+
+        <!-- История заявок на пополнение/вывод -->
+        <div class="admin-section">
+            <h3 style="color:#fff; font-size:14px; margin-bottom:8px;">📥 Активные заявки (Деп / Вывод)</h3>
+            <div id="requestsList" style="max-height:140px; overflow-y:auto;">
+                <p style="color:var(--text-muted); font-size:11px;">Нет новых заявок</p>
+            </div>
+        </div>
+
+        <!-- Рассылка -->
+        <div class="admin-section">
+            <h3 style="color:#fff; font-size:14px; margin-bottom:8px;">📢 Рассылка игрокам</h3>
+            <input type="text" id="broadcastText" class="input-field" placeholder="Текст сообщения для всех" style="margin-bottom:6px;">
+            <button class="btn-action btn-blue" onclick="sendBroadcast()">Отправить рассылку</button>
+        </div>
+
+        <!-- Логи -->
+        <div class="admin-section">
+            <h3 style="color:#fff; font-size:14px; margin-bottom:8px;">📋 Системные логи</h3>
+            <div id="adminLogs" style="background:#000; color:#0f0; padding:10px; font-family:monospace; font-size:11px; max-height:100px; overflow-y:auto;">[Система] Запущена.<br></div>
+        </div>
+    </div>
+
+    <nav>
+        <button class="nav-item active" onclick="switchTab('lobby', this)">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-label">Лобби</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('profile', this)">
+            <span class="nav-icon">👤</span>
+            <span class="nav-label">Профиль</span>
+        </button>
+    </nav>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.headerColor = '#131822';
+
+        // Базовый баланс новичка — строго 15 звёзд по твоему приказу
+        let balance = 15;
+        let requestsData = [];
+        const balanceDisplay = document.getElementById('balance');
+        const profileBalance = document.getElementById('profileBalance');
+        const adminLogs = document.getElementById('adminLogs');
+
+        function updateUI() {
+            balanceDisplay.innerText = balance;
+            profileBalance.innerText = balance;
+            document.getElementById('statRequests').innerText = requestsData.length;
+        }
+
+        function addLog(text) {
+            let time = new Date().toLocaleTimeString();
+            adminLogs.innerHTML += `[${time}] ${text}<br>`;
+            adminLogs.scrollTop = adminLogs.scrollHeight;
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.main-content').forEach(el => el.classList.remove('active'));
+            let target = document.getElementById('tab-' + tabId);
+            if (target) target.classList.add('active');
+        }
+
+        function notifyBot(payload) {
+            try {
+                let uId = (tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.id : "1234567";
+                let uName = (tg.initDataUnsafe && tg.initDataUnsafe.user) ? (tg.initDataUnsafe.user.username || "anonim") : "anonim";
+                payload.user = uId;
+                payload.username = uName;
+
+                // Добавляем в локальный список заявок для админки прямо в приложении
+                requestsData.push(payload);
+                renderRequests();
+                updateUI();
+
+                if (window.Telegram.WebApp.sendData) {
+                    window.Telegram.WebApp.sendData(JSON.stringify(payload));
+                }
+            } catch(e) {
+                console.log("SendData error");
+            }
+        }
+
+        function renderRequests() {
+            let list = document.getElementById('requestsList');
+            if (requestsData.length === 0) {
+                list.innerHTML = '<p style="color:var(--text-muted); font-size:11px;">Нет новых заявок</p>';
+                return;
+            }
+            list.innerHTML = '';
+            requestsData.forEach((req, idx) => {
+                list.innerHTML += `
+                    <div class="request-item">
+                        <span><b>@${req.username}</b>: ${req.action} (${req.amount || req.destination || 'запрос'})</span>
+                        <button onclick="resolveRequest(${idx})" style="background:var(--accent); border:none; padding:4px 8px; border-radius:4px; font-weight:bold; cursor:pointer;">OK</button>
+                    </div>`;
+            });
+        }
+
+        function resolveRequest(idx) {
+            requestsData.splice(idx, 1);
+            renderRequests();
+            updateUI();
+            alert('Заявка обработана!');
+        }
+
+        function requestDepositStars() {
+            let sum = parseInt(document.getElementById('depositStarsInput').value) || 0;
+            if (sum < 20) { alert('Мин. депозит Stars — 20!'); return; }
+            notifyBot({ action: "deposit_stars", amount: sum });
+            alert(`Запрос на ${sum} ⭐ отправлен боту!`);
+        }
+
+        function requestUzsDeposit() {
+            let sum = parseInt(document.getElementById('depositUzsInput').value) || 0;
+            if (sum < 15000) { alert('Мин. депозит в сумах — 15,000 сум!'); return; }
+            notifyBot({ action: "deposit_uzs", amount: sum });
+            alert(`Уведомление на ${sum.toLocaleString()} сум отправлено!`);
+        }
+
+        function requestWithdraw() {
+            let dest = document.getElementById('withdrawDest').value;
+            let sum = parseInt(document.getElementById('withdrawInput').value) || 0;
+            if (!dest) { alert('Введите карту или @username'); return; }
+            if (sum < 100000) { alert('Мин. вывод — 100,000 сум (или 100 ⭐)'); return; }
+            if (sum > balance) { alert('Недостаточно средств!'); return; }
+
+            notifyBot({ action: "withdraw", amount: sum, destination: dest });
+            balance -= sum;
+            updateUI();
+            alert(`Заявка на вывод отправлена!`);
+        }
+
+        // --- АДМИНКА ---
+        function openAdminModal() {
+            document.getElementById('adminPassInput').value = '';
+            document.getElementById('adminModal').style.display = 'flex';
+        }
+        function closeAdminModal() {
+            document.getElementById('adminModal').style.display = 'none';
+        }
+        function checkAdminPass() {
+            let pass = document.getElementById('adminPassInput').value;
+            if (pass === "2012") {
+                closeAdminModal();
+                switchTab('admin');
+                addLog("Администратор вошел в панель.");
+            } else {
+                alert("Неверный пароль!");
+            }
+        }
+
+        function adminGiveBalance() {
+            let user = document.getElementById('targetUser').value;
+            let amt = parseInt(document.getElementById('targetAmount').value);
+            if (!user || isNaN(amt)) { alert('Заполни юзера и сумму!'); return; }
+            balance += amt;
+            updateUI();
+            addLog(`[Админ] Выдал ${amt} игроку ${user}`);
+            alert(`Игроку ${user} успешно начислено ${amt} ⭐!`);
+        }
+
+        function sendBroadcast() {
+            let txt = document.getElementById('broadcastText').value;
+            if (!txt) { alert('Введи текст рассылки!'); return; }
+            addLog(`[Рассылка отправлена]: ${txt}`);
+            alert('Рассылка успешно улетела всем игрокам через бота!');
+        }
+
+        // --- ИГРЫ ---
+        let crashState = 'waiting', crashMult = 1.00, crashTimer = null, crashBet = 10;
+        function handleCrashAction() {
+            let multEl = document.getElementById('multText');
+            if (crashState === 'waiting') {
+                if (crashBet > balance) { alert('Недостаточно средств!'); return; }
+                balance -= crashBet;
+                updateUI();
+                crashState = 'playing';
+                crashMult = 1.00;
+                document.getElementById('crashActionBtn').innerText = 'ЗАБРАТЬ ⭐ 10';
+                document.getElementById('crashActionBtn').className = 'btn-action btn-red';
+
+                let targetCrash = (Math.random() * Math.random() * 4 + 1.1).toFixed(2);
+                crashTimer = setInterval(() => {
+                    crashMult += 0.02;
+                    multEl.innerText = crashMult.toFixed(2) + 'x';
+                    document.getElementById('crashActionBtn').innerText = 'ЗАБРАТЬ ⭐ ' + Math.floor(crashBet * crashMult);
+                    if (crashMult >= targetCrash) {
+                        clearInterval(crashTimer);
+                        crashState = 'waiting';
+                        multEl.classList.add('crashed');
+                        multEl.innerText = targetCrash + 'x (КРАШ)';
+                        document.getElementById('crashActionBtn').innerText = 'Сделать ставку';
+                        document.getElementById('crashActionBtn').className = 'btn-action btn-green';
+                    }
+                }, 100);
+            } else if (crashState === 'playing') {
+                clearInterval(crashTimer);
+                let win = Math.floor(crashBet * crashMult);
+                balance += win;
+                updateUI();
+                crashState = 'waiting';
+                document.getElementById('crashActionBtn').innerText = 'Сделать ставку';
+                document.getElementById('crashActionBtn').className = 'btn-action btn-green';
+                alert(`Вы выиграли ⭐ ${win}!`);
+            }
+        }
+
+        let bjGame = { player: 0, dealer: 0, bet: 10 };
+        function startBJ() {
+            bjGame.bet = parseInt(document.getElementById('bjBet').value) || 10;
+            if (bjGame.bet > balance) { alert('Недостаточно средств!'); return; }
+            balance -= bjGame.bet;
+            updateUI();
+            bjGame.player = Math.floor(Math.random() * 8) + 12;
+            bjGame.dealer = Math.floor(Math.random() * 5) + 14;
+            document.getElementById('playerCards').innerText = bjGame.player;
+            document.getElementById('dealerScore').innerText = '??';
+            document.getElementById('bjStatus').innerText = 'Игра идет';
+        }
+        function bjHit() {
+            bjGame.player += Math.floor(Math.random() * 5) + 2;
+            document.getElementById('playerCards').innerText = bjGame.player;
+            if (bjGame.player > 21) document.getElementById('bjStatus').innerText = '💥 Перебор!';
+        }
+        function bjStand() {
+            document.getElementById('dealerScore').innerText = bjGame.dealer;
+            if (bjGame.player > bjGame.dealer || bjGame.dealer > 21) {
+                let win = bjGame.bet * 2;
+                balance += win;
+                updateUI();
+                document.getElementById('bjStatus').innerText = `🎉 Победа! +⭐ ${win}`;
+            } else {
+                document.getElementById('bjStatus').innerText = '❌ Дилер выиграл.';
+            }
+        }
+
+        function playRoulette(color) {
+            let bet = parseInt(document.getElementById('rouletteBet').value) || 10;
+            if (bet > balance) { alert('Недостаточно средств!'); return; }
+            balance -= bet;
+            updateUI();
+
+            let resEl = document.getElementById('rouletteResult');
+            resEl.innerHTML = '🎰';
+            setTimeout(() => {
+                let winColor = Math.random() < 0.5 ? 'red' : 'black';
+                resEl.innerText = winColor === 'red' ? '🔴' : '⚫';
+                if (color === winColor) {
+                    balance += bet * 2;
+                    updateUI();
+                    document.getElementById('rouletteStatus').innerText = `🎉 Выпало ${winColor}! Выиграно ⭐ ${bet * 2}`;
+                } else {
+                    document.getElementById('rouletteStatus').innerText = `❌ Выпало ${winColor}. Ставка сгорела.`;
+                }
+            }, 500);
+        }
+
+        function playRussianRoulette() {
+            let bet = parseInt(document.getElementById('gunBet').value) || 15;
+            if (bet > balance) { alert('Недостаточно средств!'); return; }
+            balance -= bet;
+            updateUI();
+
+            let gunStatus = document.getElementById('gunStatus');
+            gunStatus.innerText = '🔄 Барабан крутится...';
+            setTimeout(() => {
+                if (Math.floor(Math.random() * 6) + 1 === 1) {
+                    gunStatus.innerText = '💥 Бах! Проигрыш.';
+                } else {
+                    balance += bet * 2;
+                    updateUI();
+                    gunStatus.innerText = `🎉 Удача! +⭐ ${bet * 2}`;
+                }
+            }, 700);
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>
